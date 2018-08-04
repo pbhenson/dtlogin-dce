@@ -1,0 +1,19 @@
+*** /usr/dt/config/Xconfig	Wed Sep 20 00:32:12 1995
+--- /etc/dt/config/Xconfig	Tue Aug 12 10:47:42 1997
+***************
+*** 69,75 ****
+  #
+  # Dtlogin.exportList:		ODMDIR NLSPATH TZ ...
+  
+! 
+  
+  
+  ############################################################################
+--- 69,75 ----
+  #
+  # Dtlogin.exportList:		ODMDIR NLSPATH TZ ...
+  
+! Dtlogin.exportList:		KRB5CCNAME
+  
+  
+  ############################################################################

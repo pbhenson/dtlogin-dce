@@ -1,0 +1,16 @@
+*** /usr/dt/config/Xreset	Wed Sep 20 00:32:17 1995
+--- /etc/dt/config/Xreset	Tue Aug 12 12:42:08 1997
+***************
+*** 58,61 ****
+    fi
+  fi
+  
+! 
+--- 58,64 ----
+    fi
+  fi
+  
+! if  [ "$KRB5CCNAME" ]
+! then
+!   kdestroy
+! fi

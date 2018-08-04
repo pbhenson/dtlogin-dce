@@ -1,0 +1,151 @@
+
+Introduction
+------------
+
+dtlogin-dce adds DCE authentication integration to the native Solaris CDE
+login. It allows CDE to authenticate users via the DCE security registry,
+and attaches DCE credentials to the CDE login session, allowing access to
+DFS.
+
+dtlogin-dce is only suitable for a "pure" DCE environment where your users
+exist only in the DCE registry (an environment I highly recommend). If you
+have a mixed environment with some users in DCE, and others only in local
+password files or NIS(+), you might not want this package. Only the root
+account is allowed to log in via local authentication (and inherit machine
+credentials), all other accounts are authenticated via DCE. Local and
+NIS(+) accounts other than root will not be able to login to CDE once
+dtlogin-dce has been installed.
+
+Currently, only the login mechanism is integrated. The screen lock
+mechanism is not integrated with DCE in this release, and will not
+function. A future release might incorporate screen lock
+integration. Currently, I'm not particularly hampered by this lack of
+functionality. If you have a dire need for screen lock integration, feel
+free to send me feedback so I can gauge the demand and decide whether to
+pursue it at this time.
+
+
+Installation
+------------
+
+To use dtlogin-dce, you need to either replicate your registry into local
+files, or integrate DCE into the Solaris naming services with my nss_dce
+package, available at:
+
+     http://www.intranet.csupomona.edu/~henson/www/projects/nss_dce/ 
+
+
+If you want to use the configuration file patches included with this
+distribution, you will need a recent version of the patch utility,
+available at prep.ai.mit.edu in the /pub/gnu directory.
+
+Note that the Makefile is configured to use gcc. If you would like to use a
+different C compiler, you need to edit the Makefile and fix the definition
+for the compiler and also add the correct flags to build a shared library
+with your compiler.
+
+First, type 'make' to compile the shared library. Next, become root and type
+'make install'. This will create the directory /etc/dt/lib, and install the
+shared library in that location.
+
+If you have customized CDE at all, or modified the /etc/rc2.d/S99dtlogin
+script, you might want to skip to the section entitled "Implementation
+Details" and finish the installation by hand. The remaining instructions in
+this section will potentially overwrite local CDE customization.
+
+Type 'make install-config'. This will create the directory /etc/dt/config,
+and copy Xconfig and Xreset from /usr/dt/config to /etc/dt/config. It will
+also move S99dtlogin from /etc/rc2.d to /etc/rc3.d, so CDE is not started
+until DCE has initialized.
+
+Finally, type 'make patch-config'. This will apply the included patches to
+/etc/dt/config/Xconfig, /etc/dt/config/Xreset, and
+/etc/rc3.d/S99dtlogin. If you want to change these files by hand to
+preserve local modifications, please see the section entitled
+"Implementation Details".
+
+Now you need to kill the current CDE processes, if running, via the command
+'/etc/rc3.d/S99dtlogin stop'. Restart them via the command
+'/etc/rc3.d/S99dtlogin start', and you can now log in as a DCE
+authenticated user.
+
+
+Implementation Details
+----------------------
+
+This package uses the LD_PRELOAD feature in Solaris to override libc
+routines with those in a custom shared libary. In particular, the getspnam
+and crypt calls are replaced. If a root login is attempted, the
+replacements simply call the original functions from libc and a normal
+login takes place. For any other account, the replacement getspnam returns
+a specially constructed shadow entry, and stores the username for later
+use. The replacement crypt call uses the previously stored username, and
+the password as supplied to the crypt call, to attempt a DCE login. On
+success, a DCE login context is established, and the replacement crypt call
+returns data that matches the specially constructed shadow entry, allowing
+the login process to continue. If the DCE login fails, the replacement
+crypt call returns data that does not match the specially constructed
+shadow entry, preventing the login process from continuing.
+
+To accomodate DCE, a few configuration files need to be modified. If you
+haven't made any local modifications to CDE, you can follow the
+installation procedure to automatically make these changes. Otherwise, you
+can make the necessary changes by hand following these directions.
+
+Create the /etc/dt/config directory if it doesn't already exist. Copy
+Xconfig and Xreset from /usr/dt/config to /etc/dt/config if not already
+present.
+
+Edit /etc/dt/config/Xconfig to include this line:
+
+     Dtlogin.exportList:           KRB5CCNAME
+
+If your Xconfig already has a Dtlogin.exportList entry, then add KRB5CCNAME
+to the current list rather than adding a new line. The default Xconfig has
+a Dtlogin.exportList that is commented out. Don't use that one.
+
+Edit /etc/dt/config/Xreset, and add the following code at the end:
+
+     if  [ "$KRB5CCNAME" ]
+     then
+       kdestroy
+     fi
+
+This code will purge the DCE context that was created during the login
+process, preventing context accumulation. Note that this will cause any
+process started in the background during the CDE session to lose its
+credentials when the user logs out. This may or may not be what you want to
+happen.
+
+Move the S99dtlogin script from /etc/rc2.d to /etc/rc3.d. This will make
+CDE start up after DCE rather than before. It will also allow you to watch
+the messages on the console while DCE is initializing. Add a LD_PRELOAD
+directive to the line that starts dtlogin, like this:
+
+     LD_PRELOAD="/usr/lib/libdce.so /usr/lib/libsocket.so
+                 /usr/lib/libnsl.so /usr/lib/libthread.so /usr/lib/libm.so
+                 /etc/dt/lib/dtlogin-dce.so.1" /usr/dt/bin/dtlogin & 
+
+This should be on *one* line, not multiple lines as it is shown here. This
+causes the dynamic linker to load the libraries necessary for DCE calls,
+and the dtlogin-dce shared library, before dtlogin is executed.
+
+That's all, folks!
+
+
+Changes
+-------
+
+0.5 - First publicly released version.
+
+
+Feedback/Availability
+---------------------
+
+Please report any bugs or feature requests to <henson@acm.org>.
+
+
+The latest version of dtlogin-dce is currently available at
+
+http://www.intranet.csupomona.edu/~henson/www/projects/dtlogin-dce/
+
