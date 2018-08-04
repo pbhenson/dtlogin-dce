@@ -130,7 +130,8 @@ This code will purge the DCE context that was created during the login
 process, preventing context accumulation. Note that this will cause any
 process started in the background during the CDE session to lose its
 credentials when the user logs out. This may or may not be what you want to
-happen.
+happen. Also, if you are using Doug Engert's Kerb5 integration with context
+joining enabled, you will most likely not want to purge contexts.
 
 Move the S99dtlogin script from /etc/rc2.d to /etc/rc3.d. This will make
 CDE start up after DCE rather than before. It will also allow you to watch
@@ -144,15 +145,25 @@ directive to the line that starts dtlogin, like this:
 This should be on *one* line, not multiple lines as it is shown here. This
 causes the dynamic linker to load the libraries necessary for DCE calls,
 and the dtlogin-dce shared library, before dtlogin is executed. If you are
-upgrading from a previous version of dtlogin-dce, you need to change your
-current LD_PRELOAD to this one. dtlogin-dce.so.1 must be at the head of the
-list so its fork routine is called, rather than the one in libthread.
+upgrading from a version of dtlogin-dce older than 1.0, you need to change
+your current LD_PRELOAD to this one. dtlogin-dce.so.1 must be at the head of
+the list so its fork routine is called, rather than the one in libthread.
 
 That's all, folks!
 
 
 Changes
 -------
+
+1.1 - Modified DCE login to obtain a forwardable TGT for use with Doug
+      Engert's Kerberos 5 interoperability package. Doug's work is
+      available at the URL ftp://achilles.ctd.anl.gov/pub/kerberos.v5 - if
+      you feel capable of configuring/compiling Kerberos 5 sources, I
+      advise you to check it out. It allows you to use a forwardable TGT to
+      authenticate to other machines in your cell, passing the TGT to the
+      remote machine to establish a full DCE context without requiring a
+      password. Very cool. 
+
 
 1.0 - Added pointer to xlockmore for DCE integrated screenlock.
 

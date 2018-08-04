@@ -3,7 +3,7 @@
  *
  * Paul Henson <henson@acm.org>
  *
- * Copyright (c) 1997 Paul Henson -- see COPYRIGHT file for details
+ * Copyright (c) 1997,1998 Paul Henson -- see COPYRIGHT file for details
  *
  */
 
@@ -83,6 +83,7 @@ char *crypt(const char *key, const char *salt)
 {
   sec_login_handle_t login_context;
   sec_login_auth_src_t auth_src;
+  sec_login_tkt_info_t tkt_info;
   sec_passwd_rec_t pw_entry;
   boolean32 reset_passwd;
   sec_passwd_str_t dce_pw;
@@ -112,6 +113,10 @@ char *crypt(const char *key, const char *salt)
   dce_pw[sec_passwd_str_max_len] = '\0';
   pw_entry.key.tagged_union.plain = &(dce_pw[0]);
 
+  /* I want a *forwardable* ticket! */
+  tkt_info.options = sec_login_tkt_forwardable;
+  sec_login_tkt_request_options(login_context, &tkt_info, &dce_st);
+  
   if (!sec_login_valid_and_cert_ident(login_context, &pw_entry, &reset_passwd, &auth_src, &dce_st))
     {
       sec_login_purge_context(&login_context, &dce_st);
