@@ -32,7 +32,7 @@ To use dtlogin-dce, you need to either replicate your registry into local
 files, or integrate DCE into the Solaris naming services with my nss_dce
 package, available at:
 
-     http://www.intranet.csupomona.edu/~henson/www/projects/nss_dce/ 
+	https://github.com/pbhenson/nss_dce    
 
 
 If you want to use the configuration file patches included with this
@@ -189,5 +189,5 @@ Please report any bugs or feature requests to <henson@acm.org>.
 
 The latest version of dtlogin-dce is currently available at
 
-http://www.intranet.csupomona.edu/~henson/www/projects/dtlogin-dce/
+	https://github.com/pbhenson/dtlogin-dce
 
