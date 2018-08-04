@@ -18,11 +18,11 @@ dtlogin-dce has been installed.
 
 Currently, only the login mechanism is integrated. The screen lock
 mechanism is not integrated with DCE in this release, and will not
-function. A future release might incorporate screen lock
-integration. Currently, I'm not particularly hampered by this lack of
-functionality. If you have a dire need for screen lock integration, feel
-free to send me feedback so I can gauge the demand and decide whether to
-pursue it at this time.
+function. If you require DCE integrated screen lock, I advise you to
+investigate xlockmore, available from ftp.x.org in /contrib/applications.
+While I haven't tried it myself, the latest version claims to have DCE
+support, and includes instructions on integrating it into CDE so it will
+be launched by the lock button on the toolbar.
 
 
 Installation
@@ -48,7 +48,8 @@ First, type 'make' to compile the shared library. Next, become root and type
 'make install'. This will create the directory /etc/dt/lib, and install the
 shared library in that location.
 
-If you have customized CDE at all, or modified the /etc/rc2.d/S99dtlogin
+If you have customized CDE at all (including the installation of a
+previous version of dtlogin-dce), or modified the /etc/rc2.d/S99dtlogin
 script, you might want to skip to the section entitled "Implementation
 Details" and finish the installation by hand. The remaining instructions in
 this section will potentially overwrite local CDE customization.
@@ -61,7 +62,8 @@ until DCE has initialized.
 Finally, type 'make patch-config'. This will apply the included patches to
 /etc/dt/config/Xconfig, /etc/dt/config/Xreset, and
 /etc/rc3.d/S99dtlogin. If you want to change these files by hand to
-preserve local modifications, please see the section entitled
+preserve local modifications, or make the minor change required to update
+from a previous version of dtlogin-dce, please see the section entitled
 "Implementation Details".
 
 Now you need to kill the current CDE processes, if running, via the command
@@ -86,6 +88,19 @@ returns data that matches the specially constructed shadow entry, allowing
 the login process to continue. If the DCE login fails, the replacement
 crypt call returns data that does not match the specially constructed
 shadow entry, preventing the login process from continuing.
+
+This version also overrides the fork and strcpy libc routines. dtlogin
+calls /bin/sh to run cpp to parse its Xresources file. The LD_PRELOAD
+setting caused sh to fail, resulting in the inability to modify dtlogin
+resources. This is fixed by overriding fork, and removing LD_PRELOAD from
+the environment before spawning the shell. strcpy needs to be overridden to
+obtain the correct password if a user has a password longer than 8
+characters. While the original CDE dtlogin passed the password as typed to
+crypt, the dtlogin included in patch 103884 for some reason truncates the
+typed password to 8 characters before passing it to crypt, resulting in
+failed logins for DCE users with long passwords. By overriding strcpy, the
+original long password is preserved and can be used to authenticate the DCE
+user.
 
 To accomodate DCE, a few configuration files need to be modified. If you
 haven't made any local modifications to CDE, you can follow the
@@ -122,13 +137,16 @@ CDE start up after DCE rather than before. It will also allow you to watch
 the messages on the console while DCE is initializing. Add a LD_PRELOAD
 directive to the line that starts dtlogin, like this:
 
-     LD_PRELOAD="/usr/lib/libdce.so /usr/lib/libsocket.so
-                 /usr/lib/libnsl.so /usr/lib/libthread.so /usr/lib/libm.so
-                 /etc/dt/lib/dtlogin-dce.so.1" /usr/dt/bin/dtlogin & 
+     LD_PRELOAD="/etc/dt/lib/dtlogin-dce.so.1 /usr/lib/libdce.so
+                 /usr/lib/libsocket.so /usr/lib/libnsl.so
+                 /usr/lib/libthread.so /usr/lib/libm.so" /usr/dt/bin/dtlogin & 
 
 This should be on *one* line, not multiple lines as it is shown here. This
 causes the dynamic linker to load the libraries necessary for DCE calls,
-and the dtlogin-dce shared library, before dtlogin is executed.
+and the dtlogin-dce shared library, before dtlogin is executed. If you are
+upgrading from a previous version of dtlogin-dce, you need to change your
+current LD_PRELOAD to this one. dtlogin-dce.so.1 must be at the head of the
+list so its fork routine is called, rather than the one in libthread.
 
 That's all, folks!
 
@@ -136,8 +154,21 @@ That's all, folks!
 Changes
 -------
 
-0.5 - First publicly released version.
+1.0 - Added pointer to xlockmore for DCE integrated screenlock.
 
+    - Fixed problem that prevented dtlogin from reading its Xresources file
+      at startup. Thanks to Kelly Smith <kelly.smith@trifolium.com> for
+      assistance testing the fix.
+
+    - CDE patch 103884-02 changed the behavior of dtlogin. While the stock
+      dtlogin would pass the entire password as typed to crypt, the new
+      dtlogin only passes the first 8 characters, preventing DCE users with
+      long passwords from logging in. Added code to allow users with long
+      passwords to log in successfully.
+
+
+0.5 - First publicly released version.
+          
 
 Feedback/Availability
 ---------------------

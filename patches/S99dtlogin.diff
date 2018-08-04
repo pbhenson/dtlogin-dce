@@ -13,7 +13,7 @@
   	update_printers
   
   	if [ -x /usr/dt/bin/dtlogin ] ; then
-! 		LD_PRELOAD="/usr/lib/libdce.so /usr/lib/libsocket.so /usr/lib/libnsl.so /usr/lib/libthread.so /usr/lib/libm.so /etc/dt/lib/dtlogin-dce.so.1" /usr/dt/bin/dtlogin &
+! 		LD_PRELOAD="/etc/dt/lib/dtlogin-dce.so.1 /usr/lib/libdce.so /usr/lib/libsocket.so /usr/lib/libnsl.so /usr/lib/libthread.so /usr/lib/libm.so" /usr/dt/bin/dtlogin &
   	fi
   	;;
   

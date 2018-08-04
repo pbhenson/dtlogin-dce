@@ -9,14 +9,34 @@
 
 #include <string.h>
 #include <shadow.h>
+#include <sys/types.h>
 #include <dce/sec_login.h>
 
 /* Store the name of the user attempting to log in */
-sec_rgy_name_t dce_username;
+static sec_rgy_name_t dce_username;
 
 /* Flag whether or not to try a DCE login */
-int dce_login = 0;
+static int dce_login = 0;
 
+/* Flag whether or not to save a long password */
+static int kludgy_password_flag = 0;
+
+/* Store the original password as given by the user */
+static sec_passwd_str_t kludgy_password = "";
+
+
+/* Prototype so compiler doesn't whine */
+pid_t _fork(void);
+
+
+/* Override fork routine. Remove LD_PRELOAD from the environment before
+ * forking to prevent side effects on spawned processes.
+ */
+pid_t fork(void) {
+  putenv("LD_PRELOAD=");
+  return _fork();
+}
+ 
 
 /* Prototype so compiler doesn't whine */
 struct spwd *_getspnam(const char *name);
@@ -79,7 +99,16 @@ char *crypt(const char *key, const char *salt)
   pw_entry.version_number = sec_passwd_c_version_none;
   pw_entry.pepper = NULL;
   pw_entry.key.key_type = sec_passwd_plain;
-  strncpy((char *)dce_pw, key, sec_passwd_str_max_len);
+
+  /* Kludge alert. If the original password was longer than 8 characters (and the given
+   * password is a prefix of the original password), use the original password. Otherwise,
+   * use the password as given to crypt.
+   */
+  if ((strlen(kludgy_password) > 8) && (!strncmp(key, kludgy_password, 8)))
+    strncpy((char *)dce_pw, kludgy_password, sec_passwd_str_max_len);    
+  else
+    strncpy((char *)dce_pw, key, sec_passwd_str_max_len);
+  
   dce_pw[sec_passwd_str_max_len] = '\0';
   pw_entry.key.tagged_union.plain = &(dce_pw[0]);
 
@@ -107,3 +136,30 @@ char *crypt(const char *key, const char *salt)
 }
 
 
+/* Override strcpy routine. This is a major kludge. Basically, if strcpy is
+ * called with the string "Please enter your password", then the next call
+ * to strcpy will be the original password as typed by the user. I don't think
+ * this string is customizable, but if you're running a non-English version of
+ * CDE, this probably won't work for you.
+ */
+char *strcpy(char *dst, const char *src)
+{
+  char *ret = dst;
+
+  if (kludgy_password_flag)
+    {
+      kludgy_password_flag = 0;
+      strncpy(kludgy_password, src, sec_passwd_str_max_len);
+      kludgy_password[sec_passwd_str_max_len] = '\0';
+    }
+  else if (!strcmp(src, "Please enter your password"))
+    kludgy_password_flag = 1;
+    
+  while (*dst = *src)
+    {
+      src++;
+      dst++;
+    }
+
+  return ret;
+}
